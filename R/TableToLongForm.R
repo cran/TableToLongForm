@@ -7,16 +7,25 @@
 TableToLongForm =
   function(Table, IdentResult = NULL,
            fulloutput = FALSE, diagnostics = FALSE){
+    if(is.data.frame(Table)){
+      warning("Table supplied is a data.frame. TableToLongForm ",
+              "is designed for a character matrix. The data.frame ",
+              "is being coerced to a matrix but this may lead to ",
+              "unexpected results.")
+      as.matrix(Table)
+    }
+    if(!is.matrix(Table))
+      stop("Table argument must be a matrix or a data.frame")
     if(diagnostics != FALSE){
-      if(diagnostics == TRUE) diagnostics = deparse(substitute(Table))
-      assign("TCRunout", file(paste0(diagnostics, ".TCRunout"),
-                              "w"), envir = TTLFBaseEnv)
+      if(!is.character(diagnostics))
+        diagnostics = deparse(substitute(Table))
+      assign("TCRunout", envir = TTLFBaseEnv,
+             file(paste0(diagnostics, ".TCRunout"), "w"))
       on.exit({
         with(TTLFBaseEnv, close(TCRunout))
         rm("TCRunout", envir = TTLFBaseEnv)
       })
     }
-    
     fullout = ReconsMain(matFull = Table, IdentResult)
     if(fulloutput) fullout else fullout$datafr
   }
@@ -34,9 +43,6 @@ IdentMain =
                     data = colNonempty[(colNonempty >= colData[1]) &
                                        (colNonempty <= colData[2])])
     TCRsink("CRAC", rowslist, colslist)
-    ## If matRowLabel isn't all empty
-    ## shift any fully empty columns that are on the right
-    ## to cols$data, in case they contained mismatched column labels
     matRowLabel = matFull[rowslist$data, colslist$label, drop = FALSE]
     if(!all(is.na(matRowLabel)) && ncol(matRowLabel) > 1){
       RowLabelNonempty = IdentNonEmpty(matRowLabel, 2)
@@ -67,12 +73,9 @@ IdentPattern =
       if(length(repind) == 1)
         break
     }
-    curseg = paste("^(", paste(vec[1:repind], collapse = ""),
-      ")+$", sep = "")
+    curseg = paste0("^(", paste(vec[1:repind], collapse = ""), ")+$")
     if(length(grep(curseg, paste(vec, collapse = ""))) > 0)
-      repind
-    else
-      NA
+      repind else length(vec)
   }
 IdentMostCommonBoundary =
   function(matFull, margin){
@@ -88,15 +91,12 @@ IdentSequence =
   function(matFull, IdentResult)
   with(IdentResult, {
     matRowLabel = matFull[rows$data, cols$label]
-    
     if(all(is.na(matRowLabel))){
-      ## Take next column
       cols$label = cols$data[1]
       cols$data = cols$data[-1]
       IdentSequence(matFull, list(rows = rows, cols = cols))
-    } else{
-      ## Check if it's a sequence of some sort
-      ## i.e. all diffs equal, but original values aren't equal
+    }
+    else{
       matRowLabel = suppressWarnings(as.numeric(matRowLabel))
       if(length(unique(matRowLabel)) > 1 &&
          length(unique(diff(matRowLabel))) == 1)
@@ -114,11 +114,8 @@ PareCol =
       matFull[rows$label, cols$data, drop = FALSE])
     matData = with(IdentResult,
       matFull[rows$data, cols$data, drop = FALSE])
-    
     colsData = IdentNonEmpty(matData, 2)
     colsLabels = IdentNonEmpty(matColLabel, 2)
-    ##if(length(colsData) != length(colsLabels))
-    ##  warning("ncol for Data != ncol for Col Labels", immediate. = TRUE)
     if(length(colsData) == length(colsLabels))
       if(ncol(matData) != length(colsData)){
         IdentResult$cols$data = IdentResult$cols$data[colsData]
@@ -135,7 +132,10 @@ PareCol =
         nParents = length(currow)/curPattern
         for(j in 1:nParents){
           curcols = 1:curPattern + curPattern * (j - 1)
-          currow[curcols] = sort(currow[curcols], na.last = TRUE)
+          cursub = currow[curcols]
+          TCRsink("ACP", cursub)
+          currow[curcols] = c(cursub[!is.na(cursub)], cursub[is.na(cursub)])
+          TCRsink("ACP", currow[curcols])
         }
         matColLabel[i,] = currow
       }
@@ -323,15 +323,12 @@ print.plist = function(plist){
     }
   cat(plistC(plist), sep = "\n")
 }
-
 attrLoc =
   function(plist, rows = NULL, cols = NULL){
     attr(plist, "Loc") = cbind(rows, cols)
     class(plist) = "plist"
     plist
   }
-
-TTLFBaseEnv = new.env()
 TCRsink =
   function(ID, ...)
   if(exists("TCRunout", envir = TTLFBaseEnv)){
@@ -344,3 +341,4 @@ TCRsink =
     }
     sink()
   }
+TTLFBaseEnv = new.env()

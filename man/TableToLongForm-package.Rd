@@ -13,8 +13,8 @@
 \tabular{ll}{
 Package: \tab TableToLongForm\cr
 Type: \tab Package\cr
-Version: \tab 1.1\cr
-Date: \tab 2013-09-26\cr
+Version: \tab 1.2\cr
+Date: \tab 2013-10-15\cr
 License: \tab GPL-3\cr
 }
 Call TableToLongForm() on a Table to automatically convert it to a

@@ -14,7 +14,8 @@ TableToLongForm(Table, IdentResult = NULL,
 }
 \arguments{
   \item{Table}{
-    the Table to convert, given as a character matrix.
+    the Table to convert, given as a character matrix. Also accepts a
+    data.frame, which is coerced to a matrix with a warning.
   }
   \item{IdentResult}{
     an optional list specifying the locations of the various elements of

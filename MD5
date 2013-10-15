@@ -1,7 +1,7 @@
-3ef945e8ea5312f210baf17e0b433e11 *DESCRIPTION
+a5c3d69d372a734d6a85eca1fd3c51d1 *DESCRIPTION
 a1750693ba1673a9920d9fedc10e8343 *NAMESPACE
-580c7f61fff6bd778b756a83b297f626 *R/TableToLongForm.R
-648639391a229b88295b0ef89f1e6301 *data/TCData.rda
+b22ca2594f0f4c0f180a0e93a09f4938 *R/TableToLongForm.R
+be95f51e9e90ddc6fedf084a8f6cf3fe *data/TCData.rda
 aeaa477139497e2078c71aac9bd0cc88 *man/TCData.Rd
-f6ad63cad167f6f1d34816103e216965 *man/TableToLongForm-package.Rd
-c4a840d445c34ee49012f608b54a014e *man/TableToLongForm.Rd
+d59a720d4d767937e2af6c83e316a799 *man/TableToLongForm-package.Rd
+77cd690a802fff65e7cf5578e4b66701 *man/TableToLongForm.Rd
