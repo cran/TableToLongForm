@@ -297,7 +297,7 @@ ReconsColLabels =
     }
     datfr
   }
-print.plist = function(plist){
+print.plist = function(x, ...){
   plistC = function(plist){
     pLoc = attr(plist, "Loc")
     if(is.list(plist)){
@@ -320,8 +320,9 @@ print.plist = function(plist){
         paste("+", namevec)
       } else paste(plist, collapse = " ")
     }
-    }
-  cat(plistC(plist), sep = "\n")
+  }
+  
+  cat(plistC(x), sep = "\n")
 }
 attrLoc =
   function(plist, rows = NULL, cols = NULL){

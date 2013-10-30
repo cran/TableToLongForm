@@ -13,8 +13,8 @@
 \tabular{ll}{
 Package: \tab TableToLongForm\cr
 Type: \tab Package\cr
-Version: \tab 1.2\cr
-Date: \tab 2013-10-15\cr
+Version: \tab 1.2.1\cr
+Date: \tab 2013-10-30\cr
 License: \tab GPL-3\cr
 }
 Call TableToLongForm() on a Table to automatically convert it to a
@@ -23,8 +23,8 @@ LongForm data.frame.
 Examples of Tables that can be converted are found in data(TCData).
 
 For more details on what TableToLongForm does and what sorts of Tables
-it can convert, refer to the Technical Report found at
-\url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/TableToLongForm_TechReport.pdf}.
+it can convert, refer to the website:
+\url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/}.
 
 Available help:
 help(TableToLongForm)

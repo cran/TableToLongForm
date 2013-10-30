@@ -35,8 +35,8 @@ TableToLongForm(Table, IdentResult = NULL,
 }
 \details{
   For details on what TableToLongForm does and what sorts of Tables it
-  can convert, refer to the Technical Report found at
-  \url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/TableToLongForm_TechReport.pdf}.
+  can convert, refer to the website:
+  \url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/}.
 }
 \value{
   The converted Table as a data.frame object.
