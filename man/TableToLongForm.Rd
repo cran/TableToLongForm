@@ -10,6 +10,9 @@
 }
 \usage{
 TableToLongForm(Table, IdentResult = NULL,
+                IdentPrimary = "combound", IdentAuxiliary = "sequence",
+                ParePreRow = NULL,
+                ParePreCol = c("mismatch", "misalign", "multirow"),
                 fulloutput = FALSE, diagnostics = FALSE)
 }
 \arguments{
@@ -21,6 +24,24 @@ TableToLongForm(Table, IdentResult = NULL,
     an optional list specifying the locations of the various elements of
     the Table. By default this is automatically generated but it can be
     specified manually where the automatic detection fails.
+  }
+  \item{IdentPrimary}{
+    The Primary Ident algorithm, of which one is chosen. See details.
+  }
+  \item{IdentAuxiliary}{
+    Auxiliary Ident algorithms, of which any combination, in any order,
+    can be chosen. They are called after the Primary algorithm, to
+    refine the \code{IdentResult}. See details.
+  }
+  \item{ParePreRow}{
+    Pre-requisite algorithms that tidy up the Row Labels for correct
+    operation of the Main Parentage algorithm. Any combination of these
+    algorithms, in any order, can be chosen. See details.
+  }
+  \item{ParePreCol}{
+    Pre-requisite algorithms that tidy up the Column Labels for correct
+    operation of the Main Parentage algorithm. Any combination of these
+    algorithms, in any order, can be chosen. See details.
   }
   \item{fulloutput}{
     if TRUE, returns a list containing additional information primarily
@@ -34,9 +55,18 @@ TableToLongForm(Table, IdentResult = NULL,
   }
 }
 \details{
-  For details on what TableToLongForm does and what sorts of Tables it
-  can convert, refer to the website:
-  \url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/}.
+  For more details on TableToLongForm refer to the website:
+  \url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/}
+
+  Specifically, the 'Technical Report' gives a rounded introduction to
+  TableToLongForm, including a short user manual, some examples and a
+  complete gallery of recognised patterns.
+
+  'Working with Modules' gives an introduction to creating new
+  modules/algorithms for TableToLongForm, to extend its capabilities.
+
+  Finally, the Literate Document has the complete documentation of the
+  source code for TableToLongForm.
 }
 \value{
   The converted Table as a data.frame object.

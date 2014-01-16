@@ -19,6 +19,6 @@
 }
 \details{
   \code{plist} objects are created as part of diagnostic output for
-  \code{TableToLongForm}. For much information, refer to the website:
-  \url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/}.
+  \code{TableToLongForm}. For more information, refer to the website:
+  \url{https://www.stat.auckland.ac.nz/~joh024/Research/TableToLongForm/}
 }

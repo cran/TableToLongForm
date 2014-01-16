@@ -6,13 +6,17 @@
 ##----------------------------------------------------------------------
 TableToLongForm =
   function(Table, IdentResult = NULL,
+           IdentPrimary = "combound", IdentAuxiliary = "sequence",
+           ParePreRow = NULL,
+           ParePreCol = c("mismatch", "misalign", "multirow"),
            fulloutput = FALSE, diagnostics = FALSE){
     if(is.data.frame(Table)){
-      warning("Table supplied is a data.frame. TableToLongForm ",
-              "is designed for a character matrix. The data.frame ",
-              "is being coerced to a matrix but this may lead to ",
-              "unexpected results.")
-      as.matrix(Table)
+      warning("Table supplied is a data.frame.\n",
+              "TableToLongForm is designed for a character matrix.\n",
+              "The data.frame is being coerced to a matrix but this\n",
+              "may lead to unexpected results.",
+              immediate. = TRUE)
+      Table = as.matrix(Table)
     }
     if(!is.matrix(Table))
       stop("Table argument must be a matrix or a data.frame")
@@ -22,14 +26,118 @@ TableToLongForm =
       assign("TCRunout", envir = TTLFBaseEnv,
              file(paste0(diagnostics, ".TCRunout"), "w"))
       on.exit({
-        with(TTLFBaseEnv, close(TCRunout))
-        rm("TCRunout", envir = TTLFBaseEnv)
+        with(TTLFBaseEnv, {
+          close(TCRunout)
+          rm(TCRunout)
+        })
       })
     }
-    fullout = ReconsMain(matFull = Table, IdentResult)
+    fullout = ReconsMain(matFull = Table, IdentResult,
+      IdentPrimary, IdentAuxiliary, ParePreRow, ParePreCol)
     if(fulloutput) fullout else fullout$datafr
   }
-IdentMain =
+rbinddf =
+  function(..., deparse.level = 0){
+    bindlist = list(...)
+    nameunion = NULL
+    for(j in 1:length(bindlist))
+      nameunion = union(nameunion, colnames(bindlist[[j]]))
+    for(j in 1:length(bindlist)){
+      curdf = bindlist[[j]]
+      namediff = setdiff(nameunion, colnames(curdf))
+      matdummy = matrix(NA, nrow = nrow(curdf), ncol = length(namediff),
+        dimnames = list(NULL, namediff))
+      bindlist[[j]] = cbind(curdf, matdummy)
+    }
+    outdf = do.call(rbind,
+      c(bindlist, list(deparse.level = deparse.level)))
+    for(j in 1:ncol(outdf))
+      if(mode(outdf[,j]) == "character") outdf[,j] = factor(outdf[,j])
+    outdf
+  }
+print.plist =
+  function(x, ...){
+    plistC = function(plist){
+      pLoc = attr(plist, "Loc")
+      if(is.list(plist)){
+        namevec = names(plist)
+        if(!is.null(pLoc))
+          namevec = paste0(names(plist),
+            " (", pLoc[,"rows"], ", ", pLoc[,"cols"], ")")
+        namelist = as.list(namevec)
+        for(i in 1:length(namelist))
+          namelist[[i]] =
+            c(paste("+", namelist[[i]]),
+              paste("-", plistC(plist[[i]])))
+        do.call(c, namelist)
+      } else{
+        if(!is.null(names(plist))){
+          namevec = names(plist)
+          if(!is.null(pLoc))
+            namevec = paste0(names(plist),
+              " (", plist, ", ", pLoc[,"cols"], ")")
+          paste("+", namevec)
+        } else paste(plist, collapse = " ")
+      }
+    }
+  
+    cat(plistC(x), sep = "\n")
+  }
+attrLoc =
+  function(plist, rows = NULL, cols = NULL){
+    attr(plist, "Loc") = cbind(rows, cols)
+    class(plist) = "plist"
+    plist
+  }
+TCRsink =
+  function(ID, ...)
+  if(exists("TCRunout", envir = TTLFBaseEnv)){
+    varlist = list(...)
+    names(varlist) = gsub(" ", "", as.character(match.call()[-(1:2)]))
+    with(TTLFBaseEnv, sink(TCRunout))
+    for(i in 1:length(varlist)){
+      cat("###TCR", ID, names(varlist)[i], "\n")
+      print(varlist[[i]])
+    }
+    sink()
+  }
+TTLFBaseEnv = new.env()
+with(TTLFBaseEnv, {aliasmat = NULL})
+TTLFaliasAdd =
+  function(Type, Fname, Falias, Author = "", Description = "")
+  assign("aliasmat",
+         rbind(get("aliasmat", envir = TTLFBaseEnv),
+               c(Type = Type, Name = Fname, Alias = Falias,
+                 Author = Author, Description = Description)),
+         envir = TTLFBaseEnv)
+
+TTLFaliasGet =
+  function(Type, Falias){
+    aliasmat = get("aliasmat", envir = TTLFBaseEnv)
+    matchRow = which(aliasmat[,"Type"] == Type &
+      aliasmat[,"Alias"] == Falias)
+    if(length(matchRow) == 1)
+      aliasmat[matchRow,"Name"]
+    else stop("Invalid algorithm specified for ", Type)
+  }
+
+TTLFaliasList =
+  function(){
+    aliasmat = get("aliasmat", envir = TTLFBaseEnv)
+    Types = unique(aliasmat[,"Type"])
+    for(Type in Types){
+      cat("==Type: ", Type, "==\n", sep = "")
+      Algos = aliasmat[aliasmat[,"Type"] == Type,,drop=FALSE]
+      for(i in 1:nrow(Algos))
+        cat("Name: ", Algos[i, "Name"], "\n",
+            "Alias: ", Algos[i, "Alias"], "\n",
+            "Author: ", Algos[i, "Author"], "\n",
+            "Description: ", Algos[i, "Description"], "\n\n",
+            sep = "")
+    }
+  }
+  
+IdentbyMostCommonBoundary =
   function(matFull){
     rowNonempty = (1:nrow(matFull))[IdentNonEmpty(matFull, 1)]
     colNonempty = (1:ncol(matFull))[IdentNonEmpty(matFull, 2)]
@@ -43,7 +151,7 @@ IdentMain =
                     data = colNonempty[(colNonempty >= colData[1]) &
                                        (colNonempty <= colData[2])])
     TCRsink("CRAC", rowslist, colslist)
-    matRowLabel = matFull[rowslist$data, colslist$label, drop = FALSE]
+    matRowLabel = matFull[rowslist$data, colslist$label,drop=FALSE]
     if(!all(is.na(matRowLabel)) && ncol(matRowLabel) > 1){
       RowLabelNonempty = IdentNonEmpty(matRowLabel, 2)
       if(max(RowLabelNonempty) < ncol(matRowLabel)){
@@ -52,12 +160,30 @@ IdentMain =
         colslist$label = colslist$label[-toshift]
       }
     }
-    IdentResult = list(rows = rowslist, cols = colslist)
-    SeqResult = IdentSequence(matFull, IdentResult)
-    if(!all(is.na(SeqResult)))
-      IdentResult = SeqResult
-    IdentResult
+    list(rows = rowslist, cols = colslist)
   }
+TTLFaliasAdd("IdentPrimary", "IdentbyMostCommonBoundary", "combound",
+             "Base Algorithm", "Default IdentPrimary algorithm")
+IdentbySequence =
+  function(matFull, IdentResult)
+  with(IdentResult, {
+    matRowLabel = matFull[rows$data, cols$label]
+    if(all(is.na(matRowLabel))){
+      cols$label = cols$data[1]
+      cols$data = cols$data[-1]
+      IdentbySequence(matFull, list(rows = rows, cols = cols))
+    }
+    else{
+      matRowLabel = suppressWarnings(as.numeric(matRowLabel))
+      if(length(unique(matRowLabel)) > 1 &&
+         length(unique(diff(matRowLabel))) == 1)
+        list(rows = rows, cols = cols)
+      else IdentResult
+    }
+  })
+TTLFaliasAdd("IdentAuxiliary", "IdentbySequence", "sequence",
+             "Base Algorithm", paste("Search for fully numeric row",
+             "labels (e.g. Years) that were misidentified as data"))
 IdentNonEmpty =
   function(mat, margin, emptyident = is.na){
     isnonempty = apply(mat, margin, function(x) !all(emptyident(x)))
@@ -87,41 +213,25 @@ IdentMostCommonBoundary =
       function(x) if(length(x) > 0) max(x) else NA))
     as.numeric(names(c(which.max(nstarts), which.max(rev(nends)))))
   }
-IdentSequence =
-  function(matFull, IdentResult)
-  with(IdentResult, {
-    matRowLabel = matFull[rows$data, cols$label]
-    if(all(is.na(matRowLabel))){
-      cols$label = cols$data[1]
-      cols$data = cols$data[-1]
-      IdentSequence(matFull, list(rows = rows, cols = cols))
-    }
-    else{
-      matRowLabel = suppressWarnings(as.numeric(matRowLabel))
-      if(length(unique(matRowLabel)) > 1 &&
-         length(unique(diff(matRowLabel))) == 1)
-        list(rows = rows, cols = cols)
-      else NA
-    }
-  })
-PareFront =
-  function(matRowLabel)
-  PareMain(matSub = matRowLabel, plist =
-           list(rows = 1:nrow(matRowLabel), cols = 1:ncol(matRowLabel)))
-PareCol =
-  function(matFull, IdentResult){
-    matColLabel = with(IdentResult,
-      matFull[rows$label, cols$data, drop = FALSE])
-    matData = with(IdentResult,
-      matFull[rows$data, cols$data, drop = FALSE])
+## Empty
+ParePreColMismatch =
+  function(matData, matColLabel){
     colsData = IdentNonEmpty(matData, 2)
     colsLabels = IdentNonEmpty(matColLabel, 2)
     if(length(colsData) == length(colsLabels))
       if(ncol(matData) != length(colsData)){
-        IdentResult$cols$data = IdentResult$cols$data[colsData]
-        matColLabel = matColLabel[,colsLabels,drop = FALSE]
-        matData = matData[,colsData,drop = FALSE]
+        matColLabel = matColLabel[,colsLabels,drop=FALSE]
+        matData = matData[,colsData,drop=FALSE]
       }
+    list(matData = matData, matColLabel = matColLabel)
+  }
+TTLFaliasAdd("ParePreCol", "ParePreColMismatch", "mismatch",
+             "Base Algorithm", paste("Correct for column labels",
+             "not matched correctly over data (label in a",
+             "different column to data)"))
+ParePreColMisaligned =
+  function(matData, matColLabel){
+    TCRsink("MCPBefore", matColLabel)
     for(i in 1:nrow(matColLabel)){
       currow = matColLabel[i,]
       curPattern =
@@ -133,29 +243,50 @@ PareCol =
         for(j in 1:nParents){
           curcols = 1:curPattern + curPattern * (j - 1)
           cursub = currow[curcols]
-          TCRsink("ACP", cursub)
           currow[curcols] = c(cursub[!is.na(cursub)], cursub[is.na(cursub)])
-          TCRsink("ACP", currow[curcols])
+          TCRsink("ACP", cursub, currow[curcols])
         }
         matColLabel[i,] = currow
       }
     }
+    TCRsink("MCPAfter", matColLabel)
+    list(matData = matData, matColLabel = matColLabel)
+  }
+TTLFaliasAdd("ParePreCol", "ParePreColMisaligned", "misalign",
+             "Base Algorithm", paste("Correct for column labels",
+             "not aligned correctly over data (parents not",
+             "positioned on the far-left, relative to their",
+             "children in the row below)"))
+ParePreColMultirow =
+  function(matData, matColLabel){
     fullrows = apply(matColLabel, 1, function(x) all(!is.na(x)))
     if(any(diff(fullrows) > 1))
       warning("full rows followed by not full rows!")
-    pastestring = ""
-    pasterows = which(fullrows)
-    for(i in 1:length(pasterows))
-      pastestring[i] = paste0("matColLabel[", pasterows[i],
-                   ",,drop = FALSE]")
-    collapsedlabels =
-      eval(parse(text = paste0("paste(",
-                   paste(pastestring, collapse = ", "), ")")))
-    
-    matColLabel = rbind(matColLabel[!fullrows,, drop = FALSE],
-      collapsedlabels)
-    list(colplist = PareFront(t(matColLabel)), IdentResult = IdentResult)
-}
+    if(any(fullrows)){
+      pastestring = ""
+      pasterows = which(fullrows)
+      for(i in 1:length(pasterows))
+        pastestring[i] = paste0("matColLabel[", pasterows[i],
+                     ",,drop=FALSE]")
+      collapsedlabels =
+        eval(parse(text = paste0("paste(",
+                     paste(pastestring, collapse = ", "), ")")))
+
+      TCRsink("MCLBefore", matColLabel)
+      matColLabel = rbind(matColLabel[!fullrows,,drop=FALSE],
+        collapsedlabels, deparse.level = 0)
+      TCRsink("MCLAfter", matColLabel)
+    }
+    list(matData = matData, matColLabel = matColLabel)
+  }
+TTLFaliasAdd("ParePreCol", "ParePreColMultirow", "multirow",
+             "Base Algorithm", paste("Merge long column labels",
+             "that were physically split over multiple rows",
+             "back into a single label"))
+PareFront =
+  function(matLabel)
+  PareMain(matSub = matLabel, plist =
+           list(rows = 1:nrow(matLabel), cols = 1:ncol(matLabel)))
 PareMain =
   function(matSub, plist){
     if(length(plist$cols) == 1){
@@ -198,7 +329,7 @@ PareByEmptyRight =
   function(matSub, plist)
   with(plist,
        if(all(is.na(matSub[rows[1], cols[-1]]))){
-         emptyrights = apply(matSub[rows, cols[-1], drop = FALSE], 1,
+         emptyrights = apply(matSub[rows, cols[-1],drop=FALSE], 1,
            function(x) all(is.na(x)))
          rowemptyright = rows[emptyrights]
          if(length(rowemptyright) == 1){
@@ -239,22 +370,47 @@ PareByEmptyBelow =
     res
   })
 ReconsMain =
-  function(matFull, IdentResult){
-    if(is.null(IdentResult))
-      IdentResult = IdentMain(matFull)
+  function(matFull, IdentResult,
+           IdentPrimary, IdentAuxiliary,
+           ParePreRow, ParePreCol){
+    if(is.null(IdentResult)){
+      IdentPrimary = TTLFaliasGet("IdentPrimary", IdentPrimary)
+      IdentResult = do.call(IdentPrimary, list(matFull = matFull))
+      if(!is.null(IdentAuxiliary))
+        for(AuxAlgo in IdentAuxiliary){
+          AuxAlgo = TTLFaliasGet("IdentAuxiliary", AuxAlgo)
+          IdentResult = do.call(AuxAlgo,
+            list(matFull = matFull, IdentResult = IdentResult))
+        }
+    }
+    matData = with(IdentResult,
+      matFull[rows$data, cols$data,drop=FALSE])
     matRowLabel = with(IdentResult,
-      matFull[rows$data, cols$label, drop = FALSE])
-    matRowLabel = matRowLabel[,
-      IdentNonEmpty(matRowLabel, 2), drop = FALSE]
+      matFull[rows$data, cols$label,drop=FALSE])
+    if(!is.null(ParePreRow))
+      for(PreAlgo in ParePreRow){
+        PreAlgo = TTLFaliasGet("ParePreRow", PreAlgo)
+        PreOut = do.call(PreAlgo,
+          list(matData = matData, matRowLabel = matRowLabel))
+        matData = PreOut$matData
+        matRowLabel = PreOut$matRowLabel
+      }
     rowplist = PareFront(matRowLabel)
     rowvecs = ReconsRowLabels(rowplist)
     TCRsink("RRL", rowplist, rowvecs[1:4,])
-    PareColres = PareCol(matFull, IdentResult)
-    colplist = PareColres$colplist
-    IdentResult = PareColres$IdentResult
-    matData = with(IdentResult,
-      matFull[rows$data[unlist(rowplist)], cols$data])
-    res = ReconsColLabels(colplist, matData, rowvecs)
+    matColLabel = with(IdentResult,
+      matFull[rows$label, cols$data,drop=FALSE])
+    if(!is.null(ParePreCol))
+      for(PreAlgo in ParePreCol){
+        PreAlgo = TTLFaliasGet("ParePreCol", PreAlgo)
+        PreOut = do.call(PreAlgo,
+          list(matData = matData, matColLabel = matColLabel))
+        matData = PreOut$matData
+        matColLabel = PreOut$matColLabel
+      }
+    colplist = PareFront(t(matColLabel))
+    matDataReduced = matData[unlist(rowplist),,drop=FALSE]
+    res = ReconsColLabels(colplist, matDataReduced, rowvecs)
     TCRsink("RCL", colplist, res[1:4,])
     list(datafr = res, oriTable = matFull, IdentResult = IdentResult,
          rowplist = rowplist, colplist = colplist)
@@ -276,10 +432,11 @@ ReconsColLabels =
                  ReconsColLabels(plist[[i]], matData, rowvecs))
         colnames(colvecs[[i]])[1] = "UNKNOWN"
       }
-      datfr = do.call(rbind, colvecs)
+      datfr = do.call(rbinddf, colvecs)
     }
     else{
-      datbit = matData[,plist]
+      datbit = matData[,plist,drop=FALSE]
+      TCRsink("RCC", plist, matData, datbit)
       datlist = NULL
       for(j in 1:ncol(datbit)){
         asnumer = suppressWarnings(as.numeric(datbit[,j]))
@@ -297,49 +454,3 @@ ReconsColLabels =
     }
     datfr
   }
-print.plist = function(x, ...){
-  plistC = function(plist){
-    pLoc = attr(plist, "Loc")
-    if(is.list(plist)){
-      namevec = names(plist)
-      if(!is.null(pLoc))
-        namevec = paste0(names(plist),
-          " (", pLoc[,"rows"], ", ", pLoc[,"cols"], ")")
-      namelist = as.list(namevec)
-      for(i in 1:length(namelist))
-        namelist[[i]] =
-          c(paste("+", namelist[[i]]),
-            paste("-", plistC(plist[[i]])))
-      do.call(c, namelist)
-    } else{
-      if(!is.null(names(plist))){
-        namevec = names(plist)
-        if(!is.null(pLoc))
-          namevec = paste0(names(plist),
-            " (", plist, ", ", pLoc[,"cols"], ")")
-        paste("+", namevec)
-      } else paste(plist, collapse = " ")
-    }
-  }
-  
-  cat(plistC(x), sep = "\n")
-}
-attrLoc =
-  function(plist, rows = NULL, cols = NULL){
-    attr(plist, "Loc") = cbind(rows, cols)
-    class(plist) = "plist"
-    plist
-  }
-TCRsink =
-  function(ID, ...)
-  if(exists("TCRunout", envir = TTLFBaseEnv)){
-    varlist = list(...)
-    names(varlist) = gsub(" ", "", as.character(match.call()[-(1:2)]))
-    with(TTLFBaseEnv, sink(TCRunout))
-    for(i in 1:length(varlist)){
-      cat("###TCR", ID, names(varlist)[i], "\n")
-      print(varlist[[i]])
-    }
-    sink()
-  }
-TTLFBaseEnv = new.env()
