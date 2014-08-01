@@ -1,10 +1,10 @@
-393670f6980402b4e110e1c8d9250b07 *DESCRIPTION
+f809ab5bebd142ceed42032e25101bcb *DESCRIPTION
 fcf6bef9a000e235ae053506a8b61056 *NAMESPACE
-dacdc432c7f766e9ba403708781d0686 *R/TableToLongForm.R
+a2fcae81f3c79e24c9f32a32de48ff86 *R/TableToLongForm.R
 6ed4d4d6d7f74055072a5beaf6c1d91c *data/TCData.rda
-aeaa477139497e2078c71aac9bd0cc88 *man/TCData.Rd
+581019a75434919e562dae5008c7b8b6 *man/TCData.Rd
 de708fba2359099aafc732447ae820c7 *man/TTLFaliasAdd.Rd
 ddf227fb165e10d4f62bf7d21d3f5479 *man/TTLFaliasList.Rd
-090ed6183c23d6c3d0506997f64235e7 *man/TableToLongForm-package.Rd
-8fd09f0079a3b0094c5c9fdec6749d4b *man/TableToLongForm.Rd
-ceb25d27110b38e85268229cd0e21cbf *man/print.plist.Rd
+0d88e705facb00b4afa42809c1ef6cb6 *man/TableToLongForm-package.Rd
+3350f239ba89a2baa4874217a0a13935 *man/TableToLongForm.Rd
+2bf3148e97e54f91186d4881d30cd440 *man/print.plist.Rd
